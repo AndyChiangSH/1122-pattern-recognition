@@ -3,6 +3,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 from loguru import logger
+import matplotlib.pyplot as plt
 
 
 class LogisticRegression:
@@ -81,24 +82,86 @@ class FLD:
         inputs: npt.NDArray[float],
         targets: t.Sequence[int],
     ) -> None:
-        raise NotImplementedError
+        # Calculate class means
+        self.m0 = np.mean(inputs[targets == 0], axis=0)
+        self.m1 = np.mean(inputs[targets == 1], axis=0)
+
+        # Compute within-class scatter matrix (SW)
+        sw0 = np.cov(inputs[targets == 0], rowvar=False)
+        sw1 = np.cov(inputs[targets == 1], rowvar=False)
+        self.sw = sw0 + sw1
+
+        # Compute between-class scatter matrix (SB)
+        diff = (self.m1 - self.m0).reshape(-1, 1)
+        self.sb = np.dot(diff, diff.T)
+
+        # Compute Fisher’s linear discriminant (w)
+        self.w = np.linalg.inv(self.sw).dot(diff)
+
+        # Calculate slope for plotting
+        self.slope = -self.w[0] / self.w[1]
 
     def predict(
         self,
         inputs: npt.NDArray[float],
     ) -> t.Sequence[t.Union[int, bool]]:
-        raise NotImplementedError
+        # Project data onto 1D space
+        projected = np.dot(inputs, self.w)
+
+        # Compute distance to class means
+        dist_to_m0 = np.abs(projected - np.dot(self.m0, self.w))
+        dist_to_m1 = np.abs(projected - np.dot(self.m1, self.w))
+
+        # Predict class based on closest mean
+        predictions = dist_to_m0 > dist_to_m1
+
+        return predictions.astype(int).flatten()
 
     def plot_projection(self, inputs: npt.NDArray[float]):
-        raise NotImplementedError
+        # Plot data and projection line
+        plt.scatter(inputs[:, 0], inputs[:, 1], c='gray', label='Data')
+        plt.plot([-5, 5], [-5 * self.slope, 5 * self.slope], c='red')
+        plt.title('Projection Line')
+        plt.show()
 
 
 def compute_auc(y_trues, y_preds) -> float:
-    raise NotImplementedError
+    # Sort the predictions by predicted probabilities
+    sorted_indices = np.argsort(y_preds)
+    y_trues_sorted = y_trues[sorted_indices]
+
+    # Count the number of positive examples
+    n_positive = np.sum(y_trues == 1)
+
+    # Initialize the variables for AUC calculation
+    auc = 0.0
+    n_false_positives = 0
+    n_true_positives = 0
+
+    # Iterate through the sorted predictions
+    for i in range(len(y_preds)):
+        # Update the counts of false positives and true positives
+        if y_trues_sorted[i] == 1:
+            n_true_positives += 1
+        else:
+            n_false_positives += 1
+
+        # Calculate the area under the ROC curve using the trapezoidal rule
+        if i < len(y_preds) - 1 and y_preds[sorted_indices[i]] != y_preds[sorted_indices[i+1]]:
+            auc += (n_true_positives / n_positive) * \
+                (n_false_positives / (len(y_preds) - n_positive))
+
+    return auc
 
 
 def accuracy_score(y_trues, y_preds) -> float:
-    raise NotImplementedError
+    # Count the number of correct predictions
+    correct_predictions = np.sum(y_trues == y_preds)
+
+    # Compute the accuracy score
+    accuracy = correct_predictions / len(y_trues)
+
+    return accuracy
 
 
 def main():
