@@ -1,5 +1,4 @@
 import typing as t
-
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -22,7 +21,25 @@ class LogisticRegression:
         Implement your fitting function here.
         The weights and intercept should be kept in self.weights and self.intercept.
         """
-        raise NotImplementedError
+        n_samples, n_features = inputs.shape
+        self.weights = np.zeros(n_features)
+        self.intercept = 0
+
+        # Gradient Descent with Cross-Entropy Loss
+        for epoch in range(self.num_iterations):
+            # Linear Transformation
+            linear_model = np.dot(inputs, self.weights) + self.intercept
+            # Non-linear Transformation
+            predictions = self.sigmoid(linear_model)
+
+            # Compute the gradient of the loss
+            loss = predictions - targets
+            dw = (1 / n_samples) * np.dot(inputs.T, loss)
+            db = (1 / n_samples) * np.sum(loss)
+
+            # Update weights and intercept
+            self.weights -= self.learning_rate * dw
+            self.intercept -= self.learning_rate * db
 
     def predict(
         self,
@@ -34,13 +51,20 @@ class LogisticRegression:
         1. sample probabilty of being class_1
         2. sample predicted class
         """
-        raise NotImplementedError
+        # Linear Transformation
+        linear_model = np.dot(inputs, self.weights) + self.intercept
+        # Non-linear Transformation
+        probabilities = self.sigmoid(linear_model)
+        # Decision Making
+        predictions = (probabilities >= 0.5).astype(int)
+        
+        return probabilities, predictions
 
     def sigmoid(self, x):
         """
         Implement the sigmoid function.
         """
-        raise NotImplementedError
+        return 1 / (1 + np.exp(-x))
 
 
 class FLD:
@@ -79,17 +103,22 @@ def accuracy_score(y_trues, y_preds) -> float:
 
 def main():
     # Read data
+    print("> Read data...")
     train_df = pd.read_csv('./train.csv')
     test_df = pd.read_csv('./test.csv')
 
-    # Part1: Logistic Regression
     x_train = train_df.drop(['target'], axis=1).to_numpy()  # (n_samples, n_features)
     y_train = train_df['target'].to_numpy()  # (n_samples, )
-    print(y_train.shape)
+    print("x_train:", x_train.shape)
+    print("y_train:", y_train.shape)
 
     x_test = test_df.drop(['target'], axis=1).to_numpy()
     y_test = test_df['target'].to_numpy()
+    print("x_test:", x_test.shape)
+    print("y_test:", y_test.shape)
 
+    # Part1: Logistic Regression
+    print("> Part1: Logistic Regression...")
     LR = LogisticRegression(
         learning_rate=1e-2,  # You can modify the parameters as you want
         num_iterations=1000,  # You can modify the parameters as you want
@@ -102,6 +131,7 @@ def main():
     logger.info(f'LR: Accuracy={accuracy:.4f}, AUC={auc_score:.4f}')
 
     # Part2: FLD
+    print("> Part2: FLD...")
     cols = ['27', '30']  # Dont modify
     x_train = train_df[cols].to_numpy()
     y_train = train_df['target'].to_numpy()
@@ -121,4 +151,6 @@ def main():
 
 
 if __name__ == '__main__':
+    print("========== START ==========")
     main()
+    print("=========== END ===========")
