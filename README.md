@@ -13,3 +13,4 @@ pip install -r requirements.txt
 ## Homework
 
 - [HW1](https://github.com/AndyChiangSH/1122-pattern-recognition/tree/main/Homework/HW1)
+- [HW2](https://github.com/AndyChiangSH/1122-pattern-recognition/tree/main/Homework/HW2)

@@ -118,8 +118,8 @@ class FLD:
 
         return predictions.astype(int).flatten()
 
-    # Ensure the figure is square
     def plot_projection(self, inputs: npt.NDArray[float]):
+        # Ensure the figure is square
         plt.figure(figsize=(8, 8))
         plt.axis('equal')
         
