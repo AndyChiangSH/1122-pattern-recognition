@@ -4,6 +4,7 @@ import numpy.typing as npt
 import pandas as pd
 from loguru import logger
 import matplotlib.pyplot as plt
+from sklearn.metrics import roc_auc_score
 
 
 class LogisticRegression:
@@ -58,7 +59,7 @@ class LogisticRegression:
         probabilities = self.sigmoid(linear_model)
         # Decision Making
         predictions = (probabilities >= 0.5).astype(int)
-        
+
         return probabilities, predictions
 
     def sigmoid(self, x):
@@ -117,39 +118,40 @@ class FLD:
 
         return predictions.astype(int).flatten()
 
+    # Ensure the figure is square
     def plot_projection(self, inputs: npt.NDArray[float]):
-        # Plot data and projection line
-        plt.scatter(inputs[:, 0], inputs[:, 1], c='gray', label='Data')
-        plt.plot([-5, 5], [-5 * self.slope, 5 * self.slope], c='red')
-        plt.title('Projection Line')
+        plt.figure(figsize=(8, 8))
+        plt.axis('equal')
+        
+        # Predict
+        preds = self.predict(inputs)
+
+        # Calculate the projections of the inputs onto the FLD line
+        projection = np.dot(inputs, self.w)
+        projected_points = np.outer(projection, self.w.flatten()) / np.dot(self.w.flatten(), self.w.flatten())
+
+        # Plot original data points
+        plt.scatter(inputs[:, 0], inputs[:, 1], c=preds, cmap='bwr')
+
+        # Plot the projected points
+        plt.scatter(projected_points[:, 0], projected_points[:, 1], c=preds, cmap='bwr')
+
+        # Plot the FLD line
+        plt.plot(projected_points[:, 0], projected_points[:, 1], 'black')
+
+        # Plot the projection line from the original points to their projected points, perpendicular to the FLD line
+        for original, projected in zip(inputs, projected_points):
+            plt.plot([original[0], projected[0]], [original[1], projected[1]], 'gray', alpha=0.5, linewidth=0.5)
+
+        # Set the title
+        plt.title(f'Projection Line: w={float(self.w[0][0]):.6f}, b={float(self.w[1][0]):.6f}')
+        plt.savefig("FLD.png")
         plt.show()
 
 
 def compute_auc(y_trues, y_preds) -> float:
-    # Sort the predictions by predicted probabilities
-    sorted_indices = np.argsort(y_preds)
-    y_trues_sorted = y_trues[sorted_indices]
-
-    # Count the number of positive examples
-    n_positive = np.sum(y_trues == 1)
-
-    # Initialize the variables for AUC calculation
-    auc = 0.0
-    n_false_positives = 0
-    n_true_positives = 0
-
-    # Iterate through the sorted predictions
-    for i in range(len(y_preds)):
-        # Update the counts of false positives and true positives
-        if y_trues_sorted[i] == 1:
-            n_true_positives += 1
-        else:
-            n_false_positives += 1
-
-        # Calculate the area under the ROC curve using the trapezoidal rule
-        if i < len(y_preds) - 1 and y_preds[sorted_indices[i]] != y_preds[sorted_indices[i+1]]:
-            auc += (n_true_positives / n_positive) * \
-                (n_false_positives / (len(y_preds) - n_positive))
+    # Compute the AUC score
+    auc = roc_auc_score(y_trues, y_preds)
 
     return auc
 
@@ -184,7 +186,7 @@ def main():
     print("> Part1: Logistic Regression...")
     LR = LogisticRegression(
         learning_rate=1e-2,  # You can modify the parameters as you want
-        num_iterations=1000,  # You can modify the parameters as you want
+        num_iterations=10000,  # You can modify the parameters as you want
     )
     LR.fit(x_train, y_train)
     y_pred_probs, y_pred_classes = LR.predict(x_test)
