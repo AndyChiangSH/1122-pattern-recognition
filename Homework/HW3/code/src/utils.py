@@ -50,7 +50,7 @@ def plot_learners_roc(y_preds: t.List[t.Sequence[float]], y_trues: t.Sequence[in
     for y_pred in y_preds:
         fpr, tpr, _ = roc_curve(y_trues, y_pred)
         roc_auc = auc(fpr, tpr)
-        plt.plot(fpr, tpr, label=f'AUC={roc_auc:.4f})')
+        plt.plot(fpr, tpr, label=f'AUC={roc_auc:.4f}')
     
     # Plot the diagonal line
     plt.plot([0, 1], [0, 1], 'k--')

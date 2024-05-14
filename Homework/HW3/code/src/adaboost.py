@@ -28,12 +28,13 @@ class AdaBoostClassifier:
             
             # Train for each epoch
             for epoch in range(num_epochs):
-                learner.zero_grad()
                 outputs = learner(X_train).squeeze()
                 loss = entropy_loss(outputs, y_train)
                 weighted_loss = torch.mean(torch.tensor(self.sample_weights) * loss)
+                
                 weighted_loss.backward()
                 optimizer.step()
+                optimizer.zero_grad()
 
             # Calculate errors and update weights
             with torch.no_grad():
@@ -44,11 +45,20 @@ class AdaBoostClassifier:
                 weighted_error = np.dot(self.sample_weights, incorrect.numpy())
 
                 # Avoid division by zero
-                if weighted_error == 0:
-                    continue
-
+                # if weighted_error == 0:
+                #     continue
+                
                 # Alpha calculation
-                alpha = 0.5 * np.log((1 - weighted_error) / weighted_error)
+                # alpha = 0.5 * np.log((1 - weighted_error) / (weighted_error + 1e-10))
+                
+                print("weighted_error:", weighted_error)
+
+                if weighted_error <= 0 or weighted_error >= 1:
+                    # Large positive or negative value depending on sign
+                    alpha = np.sign(0.5 - weighted_error)
+                else:
+                    alpha = 0.5 * np.log((1 - weighted_error) / (weighted_error + 1e-10))
+                
                 self.alphas.append(alpha)
 
                 # Update weights
@@ -82,7 +92,9 @@ class AdaBoostClassifier:
         
         # Calculate feature importance for each learner
         for learner, alpha in zip(self.learners, self.alphas):
-            importance += np.abs(learner.linear.weight.detach().numpy().squeeze()) * alpha
+            importance += np.abs(learner.linear.weight.detach().numpy().squeeze() * alpha)
+            
+        print("alpha:", self.alphas)
             
         # Average feature importance over all learners
         return importance / len(self.learners)
