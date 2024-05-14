@@ -44,7 +44,7 @@ def plot_learners_roc(y_preds: t.List[t.Sequence[float]], y_trues: t.Sequence[in
     """
     Plots the AUC curves of each learner and saves the plot to a file.
     """
-    plt.figure()
+    plt.figure(figsize=(8, 8))
     
     # Plot the ROC curve of each learner
     for y_pred in y_preds:
@@ -68,11 +68,11 @@ def plot_learners_roc(y_preds: t.List[t.Sequence[float]], y_trues: t.Sequence[in
 
 def plot_feature_importance(importances, feature_names, fpath='./feature_importance/tmp.png'):
     # Create arrays from the list to enable easy sorting
-    importances, feature_names = zip(*sorted(zip(importances, feature_names)))
+    # importances, feature_names = zip(*sorted(zip(importances, feature_names)))
 
     # Creating the bar plot
     plt.figure()
-    plt.barh(feature_names, importances, color='blue')
+    plt.barh(feature_names, importances)
     plt.xlabel('Importance')
     plt.title('Feature Importance')
     

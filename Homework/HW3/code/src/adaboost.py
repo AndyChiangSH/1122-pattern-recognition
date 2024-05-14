@@ -64,14 +64,16 @@ class AdaBoostClassifier:
 
     def predict_learners(self, X) -> t.Union[t.Sequence[int], t.Sequence[float]]:
         # Aggregate predictions from all learners
+        predictions = []
         final_output = np.zeros(X.shape[0])
         
         # Test for each weak learner
         for learner, alpha in zip(self.learners, self.alphas):
-            predictions = learner(X).detach().squeeze()
-            final_output += alpha * predictions.numpy()
-        
-        return np.sign(final_output)
+            prediction = learner(X).detach().squeeze()
+            predictions.append(prediction.numpy())
+            final_output += alpha * prediction.numpy()
+            
+        return np.sign(final_output), predictions
 
 
     def compute_feature_importance(self) -> t.Sequence[float]:
@@ -80,7 +82,7 @@ class AdaBoostClassifier:
         
         # Calculate feature importance for each learner
         for learner, alpha in zip(self.learners, self.alphas):
-            importance += np.abs(learner.linear.weight.detach().numpy()) * alpha
+            importance += np.abs(learner.linear.weight.detach().numpy().squeeze()) * alpha
             
         # Average feature importance over all learners
         return importance / len(self.learners)

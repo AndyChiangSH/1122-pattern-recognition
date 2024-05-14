@@ -43,22 +43,22 @@ class BaggingClassifier:
 
     def predict_learners(self, X: torch.Tensor) -> t.Union[t.Sequence[int], t.Sequence[float]]:
         # Aggregate predictions from all learners
-        model_outputs = []
+        predictions = []
         
         # Each model predicts the output, which are then aggregated to produce a final prediction
-        for model in self.learners:
-            model_outputs.append(model(X).detach().sigmoid().numpy())
-        
+        for learner in self.learners:
+            predictions.append(learner(X).detach().sigmoid().numpy())
+            
         # Average predictions across all learners
-        return np.mean(model_outputs, axis=0)
+        return np.mean(predictions, axis=0), predictions
 
     def compute_feature_importance(self) -> t.Sequence[float]:
         # Compute the average feature importance across all learners
         importance = np.zeros(self.learners[0].linear.weight.shape[1])
         
         # Feature importance can be estimated from the weights in a linear model
-        for model in self.learners:
-            importance += np.abs(model.linear.weight.detach().numpy())
+        for learner in self.learners:
+            importance += np.abs(learner.linear.weight.detach().numpy().squeeze())
         
         # Normalize by the number of learners to get the average importance
         return importance / len(self.learners)

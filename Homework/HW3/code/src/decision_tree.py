@@ -5,31 +5,35 @@ class DecisionTree:
     def __init__(self, max_depth=1):
         self.max_depth = max_depth
         self.tree = None
+        self.feature_importances = None
 
 
     def fit(self, X, y):
         """Builds the decision tree based on the training data."""
+        num_features = X.shape[1]
+        self.feature_importances = np.zeros(num_features)
         self.tree = self._grow_tree(X, y)
+        self.feature_importances /= self.feature_importances.sum()  # Normalize importances
 
 
     def _grow_tree(self, X, y, depth=0):
         """Recursively grows a binary decision tree."""
-        # num_samples, num_features = X.shape
+        num_samples, num_features = X.shape
         # Base cases: if dataset is pure, or depth limit has been reached
         if len(np.unique(y)) == 1 or depth >= self.max_depth:
             most_common_label = np.bincount(y).argmax()
             return {'label': most_common_label}
 
         # Find the best split
-        best_feature, best_threshold = find_best_split(X, y)
+        best_feature, best_threshold, best_impurity_decrease = find_best_split(X, y)
 
         # Grow the children recursively
-        left_indices, right_indices = split_dataset(
-            X, best_feature, best_threshold)
-        left_child = self._grow_tree(
-            X[left_indices], y[left_indices], depth + 1)
-        right_child = self._grow_tree(
-            X[right_indices], y[right_indices], depth + 1)
+        left_indices, right_indices = split_dataset(X, best_feature, best_threshold)
+        left_child = self._grow_tree(X[left_indices], y[left_indices], depth + 1)
+        right_child = self._grow_tree(X[right_indices], y[right_indices], depth + 1)
+        
+        # Accumulate the importance
+        self.feature_importances[best_feature] += best_impurity_decrease
 
         return {'feature_index': best_feature, 'threshold': best_threshold, 'left': left_child, 'right': right_child}
 
@@ -54,6 +58,11 @@ class DecisionTree:
             return self._predict_tree(x, tree_node['left'])
         else:
             return self._predict_tree(x, tree_node['right'])
+ 
+        
+    def compute_feature_importance(self):
+        """Returns the feature importances."""
+        return self.feature_importances
 
 
 def split_dataset(X, feature_index, threshold):
@@ -68,7 +77,10 @@ def find_best_split(X, y):
     """Finds the best split by iterating over every feature and every threshold."""
     best_entropy = float('inf')
     best_feature, best_threshold = None, None
+    best_impurity_decrease = 0
     num_samples, num_features = X.shape
+    
+    current_entropy = entropy(y)
 
     # For each feature
     for feature_index in range(num_features):
@@ -78,14 +90,21 @@ def find_best_split(X, y):
         for threshold in thresholds:
             # Split the dataset into left and right subsets based on the current feature and threshold
             left_indices, right_indices = split_dataset(X, feature_index, threshold)
+            if len(left_indices) == 0 or len(right_indices) == 0:
+                continue
+            
             # Calculate the weighted average of entropy
-            entropy_value = calculate_weighted_entropy(y[left_indices], y[right_indices])
+            new_entropy = calculate_weighted_entropy(y[left_indices], y[right_indices])
+            impurity_decrease = current_entropy - new_entropy
+            
             # Minimize the entropy
-            if entropy_value < best_entropy:
-                best_entropy = entropy_value
-                best_feature, best_threshold = feature_index, threshold
+            if new_entropy < best_entropy:
+                best_entropy = new_entropy
+                best_feature = feature_index
+                best_threshold = threshold
+                best_impurity_decrease = impurity_decrease
 
-    return best_feature, best_threshold
+    return best_feature, best_threshold, best_impurity_decrease
 
 
 def gini_index(y):
