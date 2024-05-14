@@ -5,6 +5,7 @@ from loguru import logger
 
 from src import AdaBoostClassifier, BaggingClassifier, DecisionTree
 from src.utils import plot_learners_roc, plot_feature_importance
+from src.decision_tree import gini_index, entropy
 
 
 def main():
@@ -41,13 +42,23 @@ def main():
     y_pred_classes = (y_pred_probs > 0.5).astype(int)  # Assuming output is probability
     accuracy_ = accuracy_score(y_test, y_pred_classes)
     logger.info(f'Bagging - Accuracy: {accuracy_:.4f}')
+    plot_learners_roc(y_preds=[y_pred_probs], y_trues=y_test, fpath='./AUC_curves/Bagging.png')
+    feature_importance = clf_bagging.compute_feature_importance()
+    plot_feature_importance(feature_importance, feature_names, fpath='./feature_importance/Bagging.png')
+
 
     # Decision Tree
+    test_array = [0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1]
+    logger.info(f'DecisionTree - Gini index: {gini_index(test_array):.4f}')
+    logger.info(f'DecisionTree - Entropy: {entropy(test_array):.4f}')
+    
     clf_tree = DecisionTree(max_depth=7)
     clf_tree.fit(X_train, y_train)
     y_pred_classes = clf_tree.predict(X_test)
     accuracy_ = accuracy_score(y_test, y_pred_classes)
     logger.info(f'DecisionTree - Accuracy: {accuracy_:.4f}')
+    feature_importance = clf_tree.compute_feature_importance()
+    plot_feature_importance(feature_importance, feature_names, fpath='./feature_importance/DecisionTree.png')
 
 
 if __name__ == '__main__':

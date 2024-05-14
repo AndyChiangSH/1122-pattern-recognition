@@ -88,13 +88,21 @@ def find_best_split(X, y):
     return best_feature, best_threshold
 
 
+def gini_index(y):
+    """Calculates the Gini index for an array of class labels."""
+    # Calculate the probabilities of each class label
+    _, counts = np.unique(y, return_counts=True)
+    probabilities = counts / counts.sum()
+    
+    return 1 - np.sum(probabilities ** 2)
+
+
 def entropy(y):
     """Calculates the entropy of an array of class labels."""
     # Calculate the probabilities of each class label
     _, counts = np.unique(y, return_counts=True)
     probabilities = counts / counts.sum()
     
-    # Return the entropy of the class labels
     return -np.sum(probabilities * np.log2(probabilities))
 
 
