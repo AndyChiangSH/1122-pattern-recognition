@@ -51,7 +51,6 @@ def main():
     feature_importance = clf_bagging.compute_feature_importance()
     plot_feature_importance(feature_importance, feature_names, fpath='./feature_importance/Bagging.png')
 
-
     # Decision Tree
     test_array = [0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1]
     logger.info(f'DecisionTree - Gini index: {gini_index(test_array):.4f}')
