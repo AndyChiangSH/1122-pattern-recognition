@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 from sklearn.metrics import accuracy_score
 from loguru import logger
 import torch
@@ -19,13 +18,13 @@ def main():
     y_train = train_df['target'].values
     X_test = test_df.drop(['target'], axis=1).values
     y_test = test_df['target'].values
-    
+
     # Convert numpy arrays to PyTorch tensors
     X_train = torch.tensor(X_train, dtype=torch.float32)
     y_train = torch.tensor(y_train, dtype=torch.float32)
     X_test = torch.tensor(X_test, dtype=torch.float32)
     y_test = torch.tensor(y_test, dtype=torch.float32)
-    
+
     # Get feature names
     feature_names = train_df.drop(['target'], axis=1).columns.to_list()
 
@@ -55,7 +54,7 @@ def main():
     test_array = [0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1]
     logger.info(f'DecisionTree - Gini index: {gini_index(test_array):.4f}')
     logger.info(f'DecisionTree - Entropy: {entropy(test_array):.4f}')
-    
+
     clf_tree = DecisionTree(max_depth=7)
     clf_tree.fit(X_train, y_train)
     y_pred_classes = clf_tree.predict(X_test)
