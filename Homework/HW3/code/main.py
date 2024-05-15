@@ -39,11 +39,10 @@ def main():
     plot_learners_roc(y_preds=y_predictions, y_trues=y_test, fpath='./AUC_curves/AdaBoost.png')
     feature_importance = clf_adaboost.compute_feature_importance()
     plot_feature_importance(feature_importance, feature_names, fpath='./feature_importance/AdaBoost.png')
-    # logger.info(f'AdaBoost - Feature Importance: {feature_importance}')
 
     # Bagging
     clf_bagging = BaggingClassifier(input_dim=X_train.shape[1])
-    _ = clf_bagging.fit(X_train, y_train, num_epochs=500, learning_rate=0.001)
+    _ = clf_bagging.fit(X_train, y_train, num_epochs=1000, learning_rate=0.004)
     y_pred_probs, y_predictions = clf_bagging.predict_learners(X_test)
     y_pred_classes = (y_pred_probs > 0.5).astype(int)
     accuracy_ = accuracy_score(y_test, y_pred_classes)
