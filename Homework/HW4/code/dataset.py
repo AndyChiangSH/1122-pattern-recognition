@@ -11,7 +11,7 @@ class BagDataset(Dataset):
         return len(self.bags)
 
     def __getitem__(self, idx):
-        bag = torch.tensor(self.bags[idx], dtype=torch.float32)
-        label = torch.tensor(self.labels[idx], dtype=torch.int)
-        
-        return bag, label
+        bag = self.bags[idx] / 255.0
+        label = int(self.labels[idx])
+        # Reshape to [channels, depth, height, width]
+        return torch.tensor(bag, dtype=torch.float32).permute(0, 3, 1, 2), torch.tensor(label, dtype=torch.long)
