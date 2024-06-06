@@ -9,7 +9,9 @@ from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
 from dataset import BagDataset
-from model.CNN import SimpleCNN
+from model.Bag import BagModel
+from model.CNN import CNN
+from model.ResNet import ResNet
 
 
 def parse_args():
@@ -19,8 +21,9 @@ def parse_args():
     # Add arguments
     parser.add_argument('--dataset_path', type=str, default='./dataset', help="Path to dataset")
     parser.add_argument('--epochs', type=int, default=10, help="Number of epochs")
-    parser.add_argument('--batch_size', type=int, default=10, help="Batch size")
-    parser.add_argument('--learning_rate', type=float, default=0.0001, help="Learning rate")
+    parser.add_argument('--batch_size', type=int, default=1, help="Batch size")
+    parser.add_argument('--learning_rate', type=float, default=0.00001, help="Learning rate")
+    parser.add_argument('--model', type=str, default="", help="Model type")
 
     # Parse the arguments
     args = parser.parse_args()
@@ -57,42 +60,55 @@ def load_data(dataset_path, classes):
 def train_model(model, train_loader, criterion, optimizer):
     model.train()
     running_loss = 0.0
-    for inputs, labels in tqdm(train_loader, desc="Train", position=1):
-        # print("inputs.shape:", inputs.shape)
-        # print("labels.shape:", labels.shape)
-        # Adjust dimensions to [batch_size, channels, depth, height, width]
-        # inputs = inputs.permute(0, 2, 1, 3, 4)
+    correct_predictions = 0
+    total_samples = 0
+    for inputs, labels in train_loader:
+        inputs, labels = inputs.to(device), labels.to(device).float()
         optimizer.zero_grad()
-        outputs = model(inputs)
+        outputs = model(inputs).squeeze(1)
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
         running_loss += loss.item() * inputs.size(0)
 
+        preds = torch.round(torch.sigmoid(outputs))
+        correct_predictions += torch.sum(preds == labels).item()
+        total_samples += labels.size(0)
+        
+        print("outputs:", outputs)
+        print("preds:", preds)
+        print("labels:", labels)
+        print("loss.item():", loss.item())
+
     train_loss = running_loss / len(train_loader.dataset)
+    train_accuracy = correct_predictions / total_samples
     
-    return train_loss
+    return train_loss, train_accuracy
 
 
 def valid_model(model, valid_loader, criterion):
     model.eval()
     running_loss = 0.0
     correct_predictions = 0
+    total_samples = 0
     with torch.no_grad():
-        for inputs, labels in tqdm(valid_loader, desc="Valid", position=1):
-            # Adjust dimensions to [batch_size, channels, depth, height, width]
-            # inputs = inputs.permute(0, 2, 1, 3, 4)
-            outputs = model(inputs)
-            # print("outputs:", outputs)
+        for inputs, labels in valid_loader:
+            inputs, labels = inputs.to(device), labels.to(device).float()
+            outputs = model(inputs).squeeze(1)
             loss = criterion(outputs, labels)
             running_loss += loss.item() * inputs.size(0)
-            _, preds = torch.max(outputs, 1)
-            # print("preds:", preds)
-            # print("labels:", labels)
-            correct_predictions += torch.sum(preds == labels)
+
+            preds = torch.round(torch.sigmoid(outputs))
+            correct_predictions += torch.sum(preds == labels).item()
+            total_samples += labels.size(0)
+            
+            print("outputs:", outputs)
+            print("preds:", preds)
+            print("labels:", labels)
+            print("loss.item():", loss.item())
 
     valid_loss = running_loss / len(valid_loader.dataset)
-    valid_accuracy = correct_predictions.double() / len(valid_loader.dataset)
+    valid_accuracy = correct_predictions / total_samples
     
     return valid_loss, valid_accuracy
 
@@ -121,32 +137,45 @@ if __name__ == '__main__':
     train_dataset = BagDataset(train_bags, train_labels)
     valid_dataset = BagDataset(valid_bags, valid_labels)
     
-    # print("len(train_dataset):", len(train_dataset))
-    # print("len(valid_dataset):", len(valid_dataset))
+    print("len(train_dataset):", len(train_dataset))
+    print("len(valid_dataset):", len(valid_dataset))
     
     # Create DataLoader
     print("> Create DataLoader...")
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False)
+    valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False)
     
     print("len(train_loader):", len(train_loader))
     print("len(valid_loader):", len(valid_loader))
 
     # Initialize the model, loss function, and optimizer
     print("> Initialize the model, loss function, and optimizer...")
-    model = SimpleCNN()
-    criterion = nn.CrossEntropyLoss()
+    if args.model == "CNN":
+        instance_model = CNN()
+    elif args.model == "ResNet":
+        instance_model = ResNet()
+    else:
+        raise ValueError(f"Invalid model type: {args.model}")
+    
+    model = BagModel(instance_model)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
+    
+    print("device:", device)
+    
+    # criterion = nn.CrossEntropyLoss()
+    criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
 
     for epoch in tqdm(range(args.epochs), desc="Epoch", position=0):
         # Train the model
         # print(">> Train the model...")
-        train_loss = train_model(model, train_loader, criterion, optimizer)
+        train_loss, train_accuracy = train_model(model, train_loader, criterion, optimizer)
 
         # Valid the model
         # print(">> Valid the model...")
         valid_loss, valid_accuracy = valid_model(model, valid_loader, criterion)
         
-        print(f'\nEpoch: {epoch}, Train Loss: {train_loss:.4f}, Valid Loss: {valid_loss:.4f}, Accuracy: {valid_accuracy:.4f}')
+        print(f'\nEpoch: {epoch}, Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, Valid Loss: {valid_loss:.4f}, Valid Accuracy: {valid_accuracy:.4f}')
     
     print("> Stop training!")
