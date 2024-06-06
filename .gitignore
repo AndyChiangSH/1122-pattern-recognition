@@ -162,3 +162,4 @@ cython_debug/
 # My ignore files
 Homework/HW4/nycu-ml-pattern-recognition-hw-4.zip
 Homework/HW4/dataset/
+Homework/HW4/model/

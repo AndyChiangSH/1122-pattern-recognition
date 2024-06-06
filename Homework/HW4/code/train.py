@@ -171,6 +171,7 @@ if __name__ == '__main__':
     
     # Set up TensorBoard writer
     writer = SummaryWriter(log_dir=os.path.join("log", args.name))
+    os.makedirs(os.path.join("model", args.name), exist_ok=True)
 
     for epoch in tqdm(range(args.epochs), desc="Epoch", position=0):
         # Train the model
@@ -188,6 +189,12 @@ if __name__ == '__main__':
         writer.add_scalar('valid/accuracy', valid_accuracy, epoch)
         
         print(f'\nEpoch: {epoch}, Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, Valid Loss: {valid_loss:.4f}, Valid Accuracy: {valid_accuracy:.4f}')
+        
+        # Save model after each epoch
+        model_save_path = os.path.join(os.path.join("model", args.name), f'epoch={epoch}.pth')
+        print(f"Save model to {model_save_path}...")
+        # Save the entire model
+        torch.save(model, model_save_path)
     
     # Close the TensorBoard writer
     writer.close()
