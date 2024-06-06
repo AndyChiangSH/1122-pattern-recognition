@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.tensorboard import SummaryWriter
 import pickle
 import argparse
 import os
@@ -19,11 +20,12 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Training arguments")
 
     # Add arguments
+    parser.add_argument('--name', type=str, default="test", help="Model name")
+    parser.add_argument('--model', type=str, default="test", help="Model type")
     parser.add_argument('--dataset_path', type=str, default='./dataset', help="Path to dataset")
     parser.add_argument('--epochs', type=int, default=10, help="Number of epochs")
     parser.add_argument('--batch_size', type=int, default=1, help="Batch size")
     parser.add_argument('--learning_rate', type=float, default=0.00001, help="Learning rate")
-    parser.add_argument('--model', type=str, default="", help="Model type")
 
     # Parse the arguments
     args = parser.parse_args()
@@ -62,7 +64,7 @@ def train_model(model, train_loader, criterion, optimizer):
     running_loss = 0.0
     correct_predictions = 0
     total_samples = 0
-    for inputs, labels in train_loader:
+    for inputs, labels in tqdm(train_loader, desc="Train", position=1):
         inputs, labels = inputs.to(device), labels.to(device).float()
         optimizer.zero_grad()
         outputs = model(inputs).squeeze(1)
@@ -75,10 +77,10 @@ def train_model(model, train_loader, criterion, optimizer):
         correct_predictions += torch.sum(preds == labels).item()
         total_samples += labels.size(0)
         
-        print("outputs:", outputs)
-        print("preds:", preds)
-        print("labels:", labels)
-        print("loss.item():", loss.item())
+        # print("outputs:", outputs)
+        # print("preds:", preds)
+        # print("labels:", labels)
+        # print("loss.item():", loss.item())
 
     train_loss = running_loss / len(train_loader.dataset)
     train_accuracy = correct_predictions / total_samples
@@ -92,7 +94,7 @@ def valid_model(model, valid_loader, criterion):
     correct_predictions = 0
     total_samples = 0
     with torch.no_grad():
-        for inputs, labels in valid_loader:
+        for inputs, labels in tqdm(valid_loader, desc="Valid", position=1):
             inputs, labels = inputs.to(device), labels.to(device).float()
             outputs = model(inputs).squeeze(1)
             loss = criterion(outputs, labels)
@@ -102,10 +104,10 @@ def valid_model(model, valid_loader, criterion):
             correct_predictions += torch.sum(preds == labels).item()
             total_samples += labels.size(0)
             
-            print("outputs:", outputs)
-            print("preds:", preds)
-            print("labels:", labels)
-            print("loss.item():", loss.item())
+            # print("outputs:", outputs)
+            # print("preds:", preds)
+            # print("labels:", labels)
+            # print("loss.item():", loss.item())
 
     valid_loss = running_loss / len(valid_loader.dataset)
     valid_accuracy = correct_predictions / total_samples
@@ -166,6 +168,9 @@ if __name__ == '__main__':
     # criterion = nn.CrossEntropyLoss()
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+    
+    # Set up TensorBoard writer
+    writer = SummaryWriter(log_dir=os.path.join("log", args.name))
 
     for epoch in tqdm(range(args.epochs), desc="Epoch", position=0):
         # Train the model
@@ -176,6 +181,15 @@ if __name__ == '__main__':
         # print(">> Valid the model...")
         valid_loss, valid_accuracy = valid_model(model, valid_loader, criterion)
         
+        # Write log
+        writer.add_scalar('train/loss', train_loss, epoch)
+        writer.add_scalar('train/accuracy', train_accuracy, epoch)
+        writer.add_scalar('valid/loss', valid_loss, epoch)
+        writer.add_scalar('valid/accuracy', valid_accuracy, epoch)
+        
         print(f'\nEpoch: {epoch}, Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, Valid Loss: {valid_loss:.4f}, Valid Accuracy: {valid_accuracy:.4f}')
+    
+    # Close the TensorBoard writer
+    writer.close()
     
     print("> Stop training!")
