@@ -17,9 +17,5 @@ class BagDataset(Dataset):
         bag = self.bags[idx] / 255.0
         label = int(self.labels[idx])
         
-        # bag = Image.fromarray((bag).astype(np.uint8))
-        # if self.transform:
-        #     bag = self.transform(bag)
-        
         # Reshape to [channels, depth, height, width]
         return torch.tensor(bag, dtype=torch.float32).permute(0, 3, 1, 2), torch.tensor(label, dtype=torch.long)
