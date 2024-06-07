@@ -3,10 +3,11 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 from torch.utils.tensorboard import SummaryWriter
+import torchvision.transforms as transforms
+from sklearn.model_selection import train_test_split
 import pickle
 import argparse
 import os
-from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
 from dataset import BagDataset
@@ -26,6 +27,7 @@ def parse_args():
     parser.add_argument('--epochs', type=int, default=10, help="Number of epochs")
     parser.add_argument('--batch_size', type=int, default=1, help="Batch size")
     parser.add_argument('--learning_rate', type=float, default=0.00001, help="Learning rate")
+    parser.add_argument('--weight_decay', type=float, default=1e-4, help="L2 regularization weight decay")
 
     # Parse the arguments
     args = parser.parse_args()
@@ -134,10 +136,23 @@ if __name__ == '__main__':
         bags, labels, test_size=0.1
     )
     
+    # Define transformations for training data
+    train_transforms = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomVerticalFlip(),
+        transforms.RandomRotation(10),
+        transforms.ToTensor()
+    ])
+
+    # Define transformations for validation data
+    val_transforms = transforms.Compose([
+        transforms.ToTensor()
+    ])
+    
     # Create BagDataset
     print("> Create BagDataset...")
-    train_dataset = BagDataset(train_bags, train_labels)
-    valid_dataset = BagDataset(valid_bags, valid_labels)
+    train_dataset = BagDataset(train_bags, train_labels, transform=train_transforms)
+    valid_dataset = BagDataset(valid_bags, valid_labels, transform=val_transforms)
     
     print("len(train_dataset):", len(train_dataset))
     print("len(valid_dataset):", len(valid_dataset))
@@ -167,7 +182,7 @@ if __name__ == '__main__':
     
     # criterion = nn.CrossEntropyLoss()
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     
     # Set up TensorBoard writer
     writer = SummaryWriter(log_dir=os.path.join("log", args.name))
