@@ -1,176 +1,150 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.tensorboard import SummaryWriter
+import torchvision.transforms as transforms
+from sklearn.model_selection import train_test_split
 import pickle
 import argparse
 import os
-from sklearn.model_selection import train_test_split
+from tqdm import tqdm
+import pandas as pd
 
-
-class BagDataset(Dataset):
-    def __init__(self, bags, labels):
-        self.bags = bags
-        self.labels = labels
-
-    def __len__(self):
-        return len(self.bags)
-
-    def __getitem__(self, idx):
-        bag = self.bags[idx] / 255.0
-        label = int(self.labels[idx])
-        return torch.tensor(bag, dtype=torch.float32), torch.tensor(label, dtype=torch.long)
+from dataset import BagDataset
+from model.Bag import BagModel
+from model.CNN import CNN
+from model.ResNet import ResNet
 
 
 def parse_args():
     # Create the parser
-    parser = argparse.ArgumentParser(description="Process some files.")
+    parser = argparse.ArgumentParser(description="Training arguments")
 
     # Add arguments
-    parser.add_argument('--dataset_path', type=str,
-                        default='./dataset', help="Path to dataset")
+    parser.add_argument('--name', type=str, default="test", help="Model name", required=True)
+    parser.add_argument('--model', type=str, default="test", help="Model type")
+    parser.add_argument('--dataset_path', type=str, default='./dataset', help="Path to dataset")
+    parser.add_argument('--epochs', type=int, default=10, help="Number of epochs")
     parser.add_argument('--batch_size', type=int, default=1, help="Batch size")
-    parser.add_argument('--epochs', type=int, default=10,
-                        help="Number of epochs")
-    parser.add_argument('--learning_rate', type=float,
-                        default=0.001, help="Learning rate")
+    parser.add_argument('--learning_rate', type=float, default=0.00001, help="Learning rate")
+    parser.add_argument('--weight_decay', type=float, default=1e-4, help="L2 regularization weight decay")
 
     # Parse the arguments
     args = parser.parse_args()
-
+    
     return args
 
 
-def load_data(dataset_path, classes):
+def load_data(dataset_path):
     bags = []
     labels = []
+    ids = []
 
-    # For each class
-    for class_ in classes:
-        train_dataset_path = os.path.join(
-            dataset_path, "train", f"class_{class_}")
-        train_dataset_files = os.listdir(train_dataset_path)
-        print(f">> Load the {train_dataset_path}...")
+    test_dataset_path = os.path.join(dataset_path, "test")
+    test_dataset_files = os.listdir(test_dataset_path)
+    print(f">> Load the {test_dataset_path}...")
 
-        # For each file
-        for train_dataset_file in train_dataset_files:
-            train_dataset_file_path = os.path.join(
-                train_dataset_path, train_dataset_file)
+    # For each file
+    for test_dataset_file in test_dataset_files:
+        test_dataset_file_path = os.path.join(
+            test_dataset_path, test_dataset_file)
 
-            # Load the file
-            with open(train_dataset_file_path, 'rb') as f:
-                data = pickle.load(f)
+        # Load the file
+        with open(test_dataset_file_path, 'rb') as f:
+            data = pickle.load(f)
 
-            bags.append(data)
-            labels.append(class_)
+        bags.append(data)
+        labels.append(0)
+        ids.append(test_dataset_file.split(".")[0])
 
-    return bags, labels
-
-
-class SimpleCNN(nn.Module):
-    def __init__(self):
-        super(SimpleCNN, self).__init__()
-        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
-        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
-        # Adjust based on the output size of the conv layers
-        self.fc1 = nn.Linear(64 * 32 * 32, 128)
-        self.fc2 = nn.Linear(128, 1)  # Output one score per instance
-
-    def forward(self, x):
-        x = self.pool(torch.relu(self.conv1(x)))
-        x = self.pool(torch.relu(self.conv2(x)))
-        x = x.view(x.size(0), -1)  # Flatten the tensor
-        x = torch.relu(self.fc1(x))
-        x = self.fc2(x)
-        return x
+    return bags, labels, ids
 
 
-class BagModel(nn.Module):
-    def __init__(self, instance_model):
-        super(BagModel, self).__init__()
-        self.instance_model = instance_model
-
-    def forward(self, x):
-        batch_size, num_instances, channels, height, width = x.size()
-        # Flatten the instances into the batch dimension
-        x = x.view(-1, channels, height, width)
-        x = self.instance_model(x)
-        # Reshape back to [batch_size, num_instances]
-        x = x.view(batch_size, num_instances)
-        x = torch.mean(x, dim=1)  # Aggregate the instance scores (mean)
-        return x
-
-
-def train_model(model, train_loader, criterion, optimizer, num_epochs):
-    for epoch in range(num_epochs):
-        model.train()
-        running_loss = 0.0
-        for inputs, labels in train_loader:
-            optimizer.zero_grad()
-            outputs = model(inputs)
-            loss = criterion(outputs, labels.float().view(-1, 1))
-            loss.backward()
-            optimizer.step()
-            running_loss += loss.item() * inputs.size(0)
-
-        epoch_loss = running_loss / len(train_loader.dataset)
-        print(f'Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss:.4f}')
-
-
-def evaluate_model(model, val_loader, criterion):
+def test_model(model, test_loader, criterion):
     model.eval()
+    test_preds = []
     running_loss = 0.0
     correct_predictions = 0
+    total_samples = 0
     with torch.no_grad():
-        for inputs, labels in val_loader:
-            outputs = model(inputs)
-            loss = criterion(outputs, labels.float().view(-1, 1))
+        for inputs, labels in tqdm(test_loader, desc="Test", position=0):
+            inputs, labels = inputs.to(device), labels.to(device).float()
+            outputs = model(inputs).squeeze(1)
+            loss = criterion(outputs, labels)
             running_loss += loss.item() * inputs.size(0)
-            preds = torch.round(outputs)
-            correct_predictions += torch.sum(preds ==
-                                             labels.float().view(-1, 1))
 
-    val_loss = running_loss / len(val_loader.dataset)
-    val_accuracy = correct_predictions.double() / len(val_loader.dataset)
-    print(f'Validation Loss: {val_loss:.4f}, Accuracy: {val_accuracy:.4f}')
+            preds = torch.round(torch.sigmoid(outputs))
+            correct_predictions += torch.sum(preds == labels).item()
+            total_samples += labels.size(0)
+            
+            test_preds += preds.cpu()
+
+    test_loss = running_loss / len(test_loader.dataset)
+    test_accuracy = correct_predictions / total_samples
+    
+    test_preds_int = [int(preds.item()) for preds in test_preds]
+
+    return test_loss, test_accuracy, test_preds_int
 
 
 if __name__ == '__main__':
-    print("> Start training!")
-
+    print("> Start testing!")
+    
     # Parse the arguments
     args = parse_args()
+    
+    # Load the testing dataset
+    print("> Load the testing dataset...")
+    test_bags, test_labels, test_ids = load_data(args.dataset_path)
+            
+    # print("len(bags):", len(bags))
+    # print("len(labels):", len(labels))
+    
+    # Define transformations for validation data
+    test_transforms = transforms.Compose([
+        transforms.ToTensor()
+    ])
+    
+    # Create BagDataset
+    print("> Create BagDataset...")
+    test_dataset = BagDataset(test_bags, test_labels, transform=test_transforms)
+    
+    print("len(test_dataset):", len(test_dataset))
+    
+    # Create DataLoader
+    print("> Create DataLoader...")
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+    
+    print("len(test_loader):", len(test_loader))
 
-    # Load the training dataset
-    print("> Load the training dataset...")
-    classes = ["0", "1"]
-    bags, labels = load_data(args.dataset_path, classes)
-
-    print("len(bags):", len(bags))
-    print("len(labels):", len(labels))
-
-    # Split the dataset into training and validation sets
-    train_bags, val_bags, train_labels, val_labels = train_test_split(
-        bags, labels, test_size=0.2, random_state=42)
-
-    # Create Dataset and DataLoader objects
-    train_dataset = BagDataset(train_bags, train_labels)
-    val_dataset = BagDataset(val_bags, val_labels)
-
-    train_loader = DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=True)
-    val_loader = DataLoader(
-        val_dataset, batch_size=args.batch_size, shuffle=False)
-
-    # Initialize the instance model and the bag model
-    instance_model = SimpleCNN()
-    model = BagModel(instance_model)
+    # Initialize the model, loss function, and optimizer
+    print("> Initialize the model, loss function, and optimizer...")
+    # Load the model
+    model = torch.load(f"./model/{args.name}.pth")
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
+    
+    print("device:", device)
+    
+    # criterion = nn.CrossEntropyLoss()
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
 
-    # Train the model
-    train_model(model, train_loader, criterion, optimizer, args.epochs)
-
-    # Evaluate the model
-    evaluate_model(model, val_loader, criterion)
+    # Test the model
+    print("> Test the model...")
+    test_loss, test_accuracy, test_preds = test_model(model, test_loader, criterion)
+    
+    # Output submission file
+    print("> Output submission file...")
+    output = {
+        "image_id": test_ids,
+        "y_pred": test_preds
+    }
+    # Create a DataFrame
+    df = pd.DataFrame(output)
+    # Write DataFrame to CSV file
+    os.makedirs(os.path.join("submission", args.name.split("/")[0]), exist_ok=True)
+    df.to_csv(f"./submission/{args.name}.csv", index=False)
+    
+    print("> Stop testing!")

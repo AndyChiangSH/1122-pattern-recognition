@@ -8,6 +8,7 @@ class BagModel(nn.Module):
         self.instance_model = instance_model
 
     def forward(self, x):
+        # print("x.shape:", x.shape)
         batch_size, num_instances, channels, height, width = x.size()
         # Flatten the instances into the batch dimension
         x = x.view(-1, channels, height, width)
