@@ -49,6 +49,6 @@ class BagModel_2(nn.Module):
         # print("instance_scores.shape:", instance_scores.shape)
 
         # Classify the bag based on the aggregated features
-        bag_scores = self.fc(instance_scores)
+        # bag_scores = self.fc(instance_scores)
 
-        return bag_scores
+        return instance_scores

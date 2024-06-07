@@ -79,10 +79,10 @@ def train_model(model, train_loader, criterion, optimizer):
         correct_predictions += torch.sum(preds == labels).item()
         total_samples += labels.size(0)
         
-        # print("outputs:", outputs)
-        # print("preds:", preds)
-        # print("labels:", labels)
-        # print("loss.item():", loss.item())
+        print("outputs:", outputs)
+        print("preds:", preds)
+        print("labels:", labels)
+        print("loss.item():", loss.item())
 
     train_loss = running_loss / len(train_loader.dataset)
     train_accuracy = correct_predictions / total_samples
@@ -106,10 +106,10 @@ def valid_model(model, valid_loader, criterion):
             correct_predictions += torch.sum(preds == labels).item()
             total_samples += labels.size(0)
             
-            # print("outputs:", outputs)
-            # print("preds:", preds)
-            # print("labels:", labels)
-            # print("loss.item():", loss.item())
+            print("outputs:", outputs)
+            print("preds:", preds)
+            print("labels:", labels)
+            print("loss.item():", loss.item())
 
     valid_loss = running_loss / len(valid_loader.dataset)
     valid_accuracy = correct_predictions / total_samples
@@ -159,7 +159,7 @@ if __name__ == '__main__':
     
     # Create DataLoader
     print("> Create DataLoader...")
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False)
     valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False)
     
     print("len(train_loader):", len(train_loader))
