@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 
 
-class BagModel(nn.Module):
+class BagMean(nn.Module):
     def __init__(self, instance_model):
-        super(BagModel, self).__init__()
+        super(BagMean, self).__init__()
         self.instance_model = instance_model
 
     def forward(self, x):

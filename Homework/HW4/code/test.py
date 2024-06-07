@@ -12,9 +12,9 @@ from tqdm import tqdm
 import pandas as pd
 
 from dataset import BagDataset
-from model.Bag import BagModel, BagMax
+from model.Bag import BagMean, BagMax
 from model.CNN import CNN
-from model.ResNet import ResNet, ResNet34, ResNet50
+from model.ResNet import ResNet18, ResNet34, ResNet50
 
 
 def parse_args():

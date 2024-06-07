@@ -37,6 +37,7 @@ Convolutional Neural Networks for Bag Classification
     - `--epochs`: number of training epochs
     - `--batch_size`: number of batch size
     - `--learning_rate`: learning rate
+
 3. The log will be saved in the `log/` folder
 4. The model will be saved in the `model/` folder
 
@@ -51,5 +52,6 @@ Convolutional Neural Networks for Bag Classification
     ```
     
     - `--name`: model name
+
 4. The submission file (.csv) will be saved in the `submission/` folder
 5. Upload the submission file (.csv) to the [Kaggle competition](https://www.kaggle.com/competitions/nycu-ml-pattern-recognition-hw-4/overview)
