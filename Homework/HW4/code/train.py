@@ -11,9 +11,9 @@ import os
 from tqdm import tqdm
 
 from dataset import BagDataset
-from model.Bag import BagModel_1, BagModel_2
+from model.Bag import BagMean, BagMax
 from model.CNN import CNN
-from model.ResNet import ResNet
+from model.ResNet import ResNet18, ResNet34, ResNet50
 
 
 def parse_args():
@@ -28,6 +28,7 @@ def parse_args():
     parser.add_argument('--batch_size', type=int, default=1, help="Batch size")
     parser.add_argument('--learning_rate', type=float, default=0.00001, help="Learning rate")
     parser.add_argument('--weight_decay', type=float, default=1e-4, help="L2 regularization weight decay")
+    parser.add_argument('--bag', type=str, default="mean", help="Model name")
 
     # Parse the arguments
     args = parser.parse_args()
@@ -79,10 +80,10 @@ def train_model(model, train_loader, criterion, optimizer):
         correct_predictions += torch.sum(preds == labels).item()
         total_samples += labels.size(0)
         
-        print("outputs:", outputs)
-        print("preds:", preds)
-        print("labels:", labels)
-        print("loss.item():", loss.item())
+        # print("outputs:", outputs)
+        # print("preds:", preds)
+        # print("labels:", labels)
+        # print("loss.item():", loss.item())
 
     train_loss = running_loss / len(train_loader.dataset)
     train_accuracy = correct_predictions / total_samples
@@ -106,10 +107,10 @@ def valid_model(model, valid_loader, criterion):
             correct_predictions += torch.sum(preds == labels).item()
             total_samples += labels.size(0)
             
-            print("outputs:", outputs)
-            print("preds:", preds)
-            print("labels:", labels)
-            print("loss.item():", loss.item())
+            # print("outputs:", outputs)
+            # print("preds:", preds)
+            # print("labels:", labels)
+            # print("loss.item():", loss.item())
 
     valid_loss = running_loss / len(valid_loader.dataset)
     valid_accuracy = correct_predictions / total_samples
@@ -169,15 +170,24 @@ if __name__ == '__main__':
     print("> Initialize the model, loss function, and optimizer...")
     if args.model == "CNN":
         instance_model = CNN()
-    elif args.model == "ResNet":
-        instance_model = ResNet()
+    elif args.model == "ResNet18":
+        instance_model = ResNet18()
+    elif args.model == "ResNet34":
+        instance_model = ResNet34()
+    elif args.model == "ResNet50":
+        instance_model = ResNet50()
     else:
         raise ValueError(f"Invalid model type: {args.model}")
     
-    model = BagModel_2(instance_model, args.batch_size)
+    if args.bag == "mean":
+        model = BagMean(instance_model)
+    elif args.bag == "max":
+        model = BagMax(instance_model)
+    else:
+        raise ValueError(f"Invalid bag type: {args.bag}")
+        
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
-    
     print("device:", device)
     
     # criterion = nn.CrossEntropyLoss()

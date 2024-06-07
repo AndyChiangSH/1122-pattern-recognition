@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 
 
-class BagModel_1(nn.Module):
+class BagMean(nn.Module):
     def __init__(self, instance_model):
-        super(BagModel_1, self).__init__()
+        super(BagMean, self).__init__()
         self.instance_model = instance_model
 
     def forward(self, x):
@@ -25,9 +25,9 @@ class BagModel_1(nn.Module):
         return x
 
 
-class BagModel_2(nn.Module):
-    def __init__(self, instance_model, num_features):
-        super(BagModel_2, self).__init__()
+class BagMax(nn.Module):
+    def __init__(self, instance_model):
+        super(BagMax, self).__init__()
         self.instance_model = instance_model
         self.fc = nn.Linear(1, 1)
 
