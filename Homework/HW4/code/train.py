@@ -11,7 +11,7 @@ import os
 from tqdm import tqdm
 
 from dataset import BagDataset
-from model.Bag import BagModel
+from model.Bag import BagModel_1, BagModel_2
 from model.CNN import CNN
 from model.ResNet import ResNet
 
@@ -174,7 +174,7 @@ if __name__ == '__main__':
     else:
         raise ValueError(f"Invalid model type: {args.model}")
     
-    model = BagModel(instance_model)
+    model = BagModel_2(instance_model, args.batch_size)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
     
