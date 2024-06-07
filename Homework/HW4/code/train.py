@@ -159,7 +159,7 @@ if __name__ == '__main__':
     
     # Create DataLoader
     print("> Create DataLoader...")
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False)
     
     print("len(train_loader):", len(train_loader))
